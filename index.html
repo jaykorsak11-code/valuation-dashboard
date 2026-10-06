@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal Stock Valuation & Projection Terminal</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        crimson: {
+                            500: '#9e1b32',
+                            600: '#821327',
+                            700: '#680d1e',
+                        },
+                        dark: {
+                            base: '#0B0F17',
+                            card: '#151C28',
+                            border: '#232D3F',
+                            muted: '#8A99AD',
+                            accent: '#1E293B',
+                            highlight: '#1E2D4A'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0B0F17;
+            color: #E2E8F0;
+            font-family: 'Inter', sans-serif;
+        }
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        /* Custom styled range sliders */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: #232D3F;
+            height: 6px;
+            border-radius: 3px;
+            outline: none;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #9e1b32;
+            cursor: pointer;
+            border: 2px solid #ffffff;
+            box-shadow: 0 0 10px rgba(158, 27, 50, 0.5);
+            transition: transform 0.15s ease, background-color 0.15s ease;
+        }
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            background: #be123c;
+        }
+        /* Glassmorphism panel style */
+        .glass-panel {
+            background: rgba(21, 28, 40, 0.90);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(35, 45, 63, 0.85);
+        }
+        .glow-crimson {
+            box-shadow: 0 0 25px rgba(158, 27, 50, 0.15);
+        }
+        /* Custom scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0B0F17;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #232D3F;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #9e1b32;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between p-3 sm:p-6 text-slate-200">
+
+    <div class="max-w-7xl mx-auto w-full space-y-6">
+
+        <!-- HEADER & PRESET SELECTOR -->
+        <header class="glass-panel rounded-2xl p-4 sm:p-6 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 glow-crimson border-l-4 border-l-crimson-500">
+            <div class="flex items-center gap-4">
+                <div class="bg-crimson-500/20 text-crimson-500 p-3 rounded-xl border border-crimson-500/30 hidden sm:flex items-center justify-center">
+                    <i class="fa-solid fa-chart-line text-2xl"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-white" id="display-company-title">Academy Sports and Outdoors</h1>
+                        <span class="px-2.5 py-0.5 text-xs font-mono font-bold bg-crimson-500/20 text-crimson-400 rounded border border-crimson-500/30" id="display-ticker">NASDAQ: ASO</span>
+                    </div>
+                    <p class="text-xs sm:text-sm text-dark-muted mt-1">
+                        Universal Valuation Terminal & Projections | <span class="text-crimson-500 font-medium">Culverhouse College of Business (UA)</span>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Profile & Preset Selection -->
+            <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto justify-start lg:justify-end">
+                <div class="bg-dark-base px-3 py-2 rounded-xl border border-dark-border w-full sm:w-auto">
+                    <label for="company-preset" class="text-[10px] text-dark-muted uppercase font-semibold block mb-0.5">Quick Load Preset Profile</label>
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-building text-slate-400 text-xs"></i>
+                        <select id="company-preset" onchange="loadPresetProfile(this.value)" class="bg-transparent text-xs font-semibold text-white focus:outline-none cursor-pointer pr-2">
+                            <option value="ASO" class="bg-dark-card text-white">Academy Sports ($ASO)</option>
+                            <option value="AAPL" class="bg-dark-card text-white">Apple Inc. ($AAPL)</option>
+                            <option value="TSLA" class="bg-dark-card text-white">Tesla, Inc. ($TSLA)</option>
+                            <option value="NVDA" class="bg-dark-card text-white">NVIDIA Corp. ($NVDA)</option>
+                            <option value="CUSTOM" class="bg-dark-card text-amber-400">Custom Profile</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="bg-dark-base px-3 py-2 rounded-xl border border-dark-border">
+                    <span class="text-[10px] text-dark-muted uppercase font-semibold block">Analyst</span>
+                    <span class="text-xs font-semibold text-white"><i class="fa-solid fa-user-graduate text-crimson-500 mr-1"></i>JK | Finance Major</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- CORE CONFIGURATION PANEL (EDITABLE BASELINE INPUTS) -->
+        <section class="glass-panel rounded-2xl p-4 sm:p-5">
+            <div class="flex items-center justify-between mb-3 border-b border-dark-border pb-2">
+                <h2 class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-crimson-500"></i> Baseline Company Inputs
+                </h2>
+                <span class="text-[11px] text-dark-muted">Modify baseline data below to evaluate any company</span>
+            </div>
+            
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 text-xs">
+                <div>
+                    <label class="block text-[11px] text-dark-muted font-medium mb-1">Company Name</label>
+                    <input type="text" id="input-company-name" value="Academy Sports and Outdoors" oninput="onMetaInputChange()"
+                        class="w-full bg-dark-base border border-dark-border rounded-lg px-3 py-1.5 text-white font-medium focus:border-crimson-500 focus:outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-[11px] text-dark-muted font-medium mb-1">Ticker Symbol</label>
+                    <input type="text" id="input-ticker" value="ASO" oninput="onMetaInputChange()"
+                        class="w-full bg-dark-base border border-dark-border rounded-lg px-3 py-1.5 text-white font-mono font-semibold uppercase focus:border-crimson-500 focus:outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-[11px] text-dark-muted font-medium mb-1">Current Share Price ($)</label>
+                    <input type="number" id="input-price" value="54.50" step="0.1" oninput="updateValuationModel()"
+                        class="w-full bg-dark-base border border-dark-border rounded-lg px-3 py-1.5 text-emerald-400 font-mono font-semibold focus:border-crimson-500 focus:outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-[11px] text-dark-muted font-medium mb-1">Baseline Revenue ($B)</label>
+                    <input type="number" id="input-revenue" value="6.15" step="0.05" oninput="updateValuationModel()"
+                        class="w-full bg-dark-base border border-dark-border rounded-lg px-3 py-1.5 text-white font-mono font-semibold focus:border-crimson-500 focus:outline-none transition">
+                </div>
+                <div class="col-span-2 sm:col-span-1">
+                    <label class="block text-[11px] text-dark-muted font-medium mb-1">Shares Outstanding (M)</label>
+                    <input type="number" id="input-shares" value="74.0" step="1" oninput="updateValuationModel()"
+                        class="w-full bg-dark-base border border-dark-border rounded-lg px-3 py-1.5 text-white font-mono font-semibold focus:border-crimson-500 focus:outline-none transition">
+                </div>
+            </div>
+        </section>
+
+        <!-- LIVE FINANCIAL KPIS GRID -->
+        <section class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+            <!-- Projected Revenue -->
+            <div class="glass-panel p-4 rounded-xl relative overflow-hidden">
+                <span class="text-xs font-medium text-dark-muted block">Projected Revenue</span>
+                <div class="text-lg sm:text-xl font-bold font-mono text-white mt-1" id="kpi-revenue">$0.00B</div>
+                <span class="text-[10px] text-emerald-400 font-mono mt-1 block" id="kpi-rev-growth">+0.0% CAGR</span>
+                <div class="absolute -right-2 -bottom-2 opacity-5 text-4xl text-white"><i class="fa-solid fa-sack-dollar"></i></div>
+            </div>
+
+            <!-- Projected Net Income -->
+            <div class="glass-panel p-4 rounded-xl relative overflow-hidden">
+                <span class="text-xs font-medium text-dark-muted block">Projected Net Income</span>
+                <div class="text-lg sm:text-xl font-bold font-mono text-white mt-1" id="kpi-net-income">$0.0M</div>
+                <span class="text-[10px] text-dark-muted font-mono mt-1 block" id="kpi-net-margin">Margin: 0.0%</span>
+                <div class="absolute -right-2 -bottom-2 opacity-5 text-4xl text-white"><i class="fa-solid fa-coins"></i></div>
+            </div>
+
+            <!-- Projected EPS -->
+            <div class="glass-panel p-4 rounded-xl relative overflow-hidden">
+                <span class="text-xs font-medium text-dark-muted block">Projected EPS</span>
+                <div class="text-lg sm:text-xl font-bold font-mono text-crimson-500 mt-1" id="kpi-eps">$0.00</div>
+                <span class="text-[10px] text-dark-muted font-mono mt-1 block" id="kpi-shares">74.0M Shares</span>
+                <div class="absolute -right-2 -bottom-2 opacity-5 text-4xl text-crimson-500"><i class="fa-solid fa-calculator"></i></div>
+            </div>
+
+            <!-- Target Share Price -->
+            <div class="glass-panel p-4 rounded-xl border border-crimson-500/40 relative overflow-hidden bg-gradient-to-br from-dark-card to-crimson-700/20">
+                <span class="text-xs font-medium text-slate-300 block">Target Share Price</span>
+                <div class="text-xl sm:text-2xl font-extrabold font-mono text-white mt-1" id="kpi-target-price">$0.00</div>
+                <span class="text-[10px] font-mono mt-1 block font-semibold text-crimson-400" id="kpi-multiple">10.0x P/E</span>
+            </div>
+
+            <!-- Total Implied Upside -->
+            <div class="glass-panel p-4 rounded-xl relative overflow-hidden">
+                <span class="text-xs font-medium text-dark-muted block">Total Implied Upside</span>
+                <div class="text-lg sm:text-xl font-bold font-mono mt-1" id="kpi-upside">+0.00%</div>
+                <span class="text-[10px] text-dark-muted font-mono mt-1 block" id="kpi-current-price-label">vs $54.50 Base</span>
+                <div class="absolute -right-2 -bottom-2 opacity-5 text-4xl text-white"><i class="fa-solid fa-arrow-trend-up"></i></div>
+            </div>
+
+            <!-- Annualized CAGR Return -->
+            <div class="glass-panel p-4 rounded-xl relative overflow-hidden">
+                <span class="text-xs font-medium text-dark-muted block">Annualized Return</span>
+                <div class="text-lg sm:text-xl font-bold font-mono text-sky-400 mt-1" id="kpi-cagr">+0.00%</div>
+                <span class="text-[10px] text-dark-muted font-mono mt-1 block" id="kpi-horizon-label">5-Yr Compound</span>
+                <div class="absolute -right-2 -bottom-2 opacity-5 text-4xl text-sky-400"><i class="fa-solid fa-chart-pie"></i></div>
+            </div>
+        </section>
+
+        <!-- DRIVERS & SCENARIOS PANEL -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            <!-- CONTROLS & SLIDERS (5 Cols) -->
+            <div class="lg:col-span-5 glass-panel p-5 rounded-2xl space-y-5">
+                <div class="flex justify-between items-center pb-3 border-b border-dark-border">
+                    <div>
+                        <h2 class="text-base font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-sliders text-crimson-500"></i> Valuation Driver Sliders
+                        </h2>
+                        <p class="text-xs text-dark-muted">Adjust key valuation drivers to recalculate model live.</p>
+                    </div>
+                    <!-- Quick Presets -->
+                    <div class="flex gap-1 bg-dark-base p-1 rounded-lg border border-dark-border">
+                        <button onclick="applyScenarioPreset('bear')" class="px-2.5 py-1 text-[11px] font-medium text-slate-400 hover:text-white hover:bg-slate-800 rounded transition">Bear</button>
+                        <button onclick="applyScenarioPreset('base')" class="px-2.5 py-1 text-[11px] font-medium text-crimson-400 bg-crimson-500/10 rounded font-semibold border border-crimson-500/30">Base</button>
+                        <button onclick="applyScenarioPreset('bull')" class="px-2.5 py-1 text-[11px] font-medium text-slate-400 hover:text-white hover:bg-slate-800 rounded transition">Bull</button>
+                    </div>
+                </div>
+
+                <!-- Horizon Selector -->
+                <div class="space-y-1.5">
+                    <label class="text-xs font-medium text-slate-300 flex justify-between">
+                        <span>Projection Horizon</span>
+                        <span class="font-mono text-crimson-400 font-bold" id="val-horizon">5 Years</span>
+                    </label>
+                    <div class="grid grid-cols-3 gap-2 bg-dark-base p-1 rounded-xl border border-dark-border text-xs font-mono">
+                        <button id="btn-hz-1" onclick="setHorizon(1)" class="py-1.5 rounded-lg font-semibold transition text-slate-400 hover:text-white">1 Year</button>
+                        <button id="btn-hz-3" onclick="setHorizon(3)" class="py-1.5 rounded-lg font-semibold transition text-slate-400 hover:text-white">3 Years</button>
+                        <button id="btn-hz-5" onclick="setHorizon(5)" class="py-1.5 rounded-lg font-semibold transition bg-crimson-500/20 text-crimson-400 border border-crimson-500/30">5 Years</button>
+                    </div>
+                </div>
+
+                <!-- Slider 1: Revenue Growth CAGR -->
+                <div class="space-y-2">
+                    <div class="flex justify-between text-xs">
+                        <label for="slider-growth" class="font-medium text-slate-300">Revenue CAGR (%)</label>
+                        <span class="font-mono font-bold text-crimson-500" id="val-growth">+5.0%</span>
+                    </div>
+                    <input type="range" id="slider-growth" min="-10" max="35" step="0.5" value="5" oninput="updateValuationModel()">
+                    <div class="flex justify-between text-[10px] font-mono text-dark-muted">
+                        <span>-10.0%</span>
+                        <span>0.0%</span>
+                        <span>+35.0%</span>
+                    </div>
+                </div>
+
+                <!-- Slider 2: Target Net Margin -->
+                <div class="space-y-2">
+                    <div class="flex justify-between text-xs">
+                        <label for="slider-margin" class="font-medium text-slate-300">Target Net Profit Margin (%)</label>
+                        <span class="font-mono font-bold text-crimson-500" id="val-margin">6.5%</span>
+                    </div>
+                    <input type="range" id="slider-margin" min="1" max="35" step="0.5" value="6.5" oninput="updateValuationModel()">
+                    <div class="flex justify-between text-[10px] font-mono text-dark-muted">
+                        <span>1.0%</span>
+                        <span>18.0%</span>
+                        <span>35.0%</span>
+                    </div>
+                </div>
+
+                <!-- Slider 3: Exit P/E Multiple -->
+                <div class="space-y-2">
+                    <div class="flex justify-between text-xs">
+                        <label for="slider-pe" class="font-medium text-slate-300">Exit P/E Multiple</label>
+                        <span class="font-mono font-bold text-crimson-500" id="val-pe">10.0x</span>
+                    </div>
+                    <input type="range" id="slider-pe" min="5" max="50" step="0.5" value="10" oninput="updateValuationModel()">
+                    <div class="flex justify-between text-[10px] font-mono text-dark-muted">
+                        <span>5.0x</span>
+                        <span>25.0x</span>
+                        <span>50.0x</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CHARTS & VISUALIZATIONS (7 Cols) -->
+            <div class="lg:col-span-7 grid grid-cols-1 gap-6">
+                <!-- Multi-Year Trajectory Chart -->
+                <div class="glass-panel p-5 rounded-2xl flex flex-col justify-between">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+                            <i class="fa-solid fa-chart-column text-emerald-400"></i> Multi-Year Financial Trajectory
+                        </h3>
+                        <span class="text-[10px] font-mono text-dark-muted">Revenue ($B) & Net Income ($M)</span>
+                    </div>
+                    <div class="relative w-full h-48">
+                        <canvas id="trajectoryChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Valuation Sensitivity Curve -->
+                <div class="glass-panel p-5 rounded-2xl flex flex-col justify-between">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+                            <i class="fa-solid fa-chart-line text-crimson-500"></i> Target Price Sensitivity across Exit P/E
+                        </h3>
+                        <span class="text-[10px] font-mono text-dark-muted">Share Price ($) vs Multiple</span>
+                    </div>
+                    <div class="relative w-full h-44">
+                        <canvas id="sensitivityCurveChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2D SENSITIVITY MATRIX TABLE -->
+        <section class="glass-panel p-5 rounded-2xl space-y-4">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-dark-border">
+                <div>
+                    <h3 class="text-base font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-table-cells text-sky-400"></i> 2D Target Price Sensitivity Matrix
+                    </h3>
+                    <p class="text-xs text-dark-muted">Valuation outcomes under varying Net Margins (Rows) vs. Exit P/E Multiples (Columns). Active cell highlighted.</p>
+                </div>
+                <div class="flex items-center gap-3 text-xs font-mono">
+                    <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-crimson-500 inline-block border border-white"></span> Active Target</span>
+                    <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-emerald-500/20 border border-emerald-500/40 inline-block"></span> Above Current</span>
+                </div>
+            </div>
+
+            <!-- Table Container -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-center text-xs font-mono border-collapse" id="sensitivity-matrix">
+                    <thead>
+                        <tr id="matrix-header-row" class="text-dark-muted border-b border-dark-border">
+                            <!-- Populated dynamically -->
+                        </tr>
+                    </thead>
+                    <tbody id="matrix-body" class="divide-y divide-dark-border/50">
+                        <!-- Populated dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- METHODOLOGY & FORMULAS -->
+        <footer class="glass-panel p-4 sm:p-5 rounded-2xl text-xs text-dark-muted space-y-2">
+            <div class="flex items-center justify-between border-b border-dark-border pb-2">
+                <span class="font-bold text-slate-300 uppercase tracking-wider text-[11px]"><i class="fa-solid fa-book-bookmark text-crimson-500 mr-1.5"></i> Model Methodology & Formulas</span>
+                <span class="font-mono text-[10px]">Culverhouse Finance Dashboard</span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-[11px] pt-1">
+                <div>
+                    <span class="font-semibold text-slate-200 block">1. Revenue & Income Path:</span>
+                    <p class="mt-0.5 text-slate-400">$\text{Rev}_N = \text{Rev}_0 \times (1 + g)^N$<br>$\text{Net Income}_N = \text{Rev}_N \times \text{Margin}$</p>
+                </div>
+                <div>
+                    <span class="font-semibold text-slate-200 block">2. Earnings & Share Target:</span>
+                    <p class="mt-0.5 text-slate-400">$\text{EPS}_N = \frac{\text{Net Income}_N}{\text{Diluted Shares}}$<br>$\text{Target Price} = \text{EPS}_N \times \text{Exit P/E}$</p>
+                </div>
+                <div>
+                    <span class="font-semibold text-slate-200 block">3. Returns & Annualized CAGR:</span>
+                    <p class="mt-0.5 text-slate-400">$\text{Upside} = \frac{\text{Target}}{\text{Price}_0} - 1$<br>$\text{CAGR} = \left(\frac{\text{Target}}{\text{Price}_0}\right)^{1/N} - 1$</p>
+                </div>
+            </div>
+        </footer>
+
+    </div>
+
+    <script>
+        // PRESET COMPANY DATABASE
+        const PROFILES = {
+            ASO: {
+                name: "Academy Sports and Outdoors",
+                ticker: "ASO",
+                price: 54.50,
+                revenue: 6.15,
+                shares: 74.0,
+                growth: 5.0,
+                margin: 6.5,
+                pe: 10.0,
+                horizon: 5
+            },
+            AAPL: {
+                name: "Apple Inc.",
+                ticker: "AAPL",
+                price: 225.00,
+                revenue: 385.0,
+                shares: 15300.0,
+                growth: 7.0,
+                margin: 25.0,
+                pe: 28.0,
+                horizon: 5
+            },
+            TSLA: {
+                name: "Tesla, Inc.",
+                ticker: "TSLA",
+                price: 240.00,
+                revenue: 97.0,
+                shares: 3190.0,
+                growth: 18.0,
+                margin: 10.0,
+                pe: 45.0,
+                horizon: 5
+            },
+            NVDA: {
+                name: "NVIDIA Corporation",
+                ticker: "NVDA",
+                price: 120.00,
+                revenue: 96.0,
+                shares: 24500.0,
+                growth: 25.0,
+                margin: 32.0,
+                pe: 38.0,
+                horizon: 5
+            }
+        };
+
+        // GLOBAL HORIZON STATE
+        let selectedHorizon = 5;
+        let trajectoryChartInstance = null;
+        let sensitivityCurveChartInstance = null;
+
+        function loadPresetProfile(profileKey) {
+            if (profileKey === "CUSTOM") return;
+            const p = PROFILES[profileKey];
+            if (!p) return;
+
+            document.getElementById("input-company-name").value = p.name;
+            document.getElementById("input-ticker").value = p.ticker;
+            document.getElementById("input-price").value = p.price;
+            document.getElementById("input-revenue").value = p.revenue;
+            document.getElementById("input-shares").value = p.shares;
+
+            document.getElementById("slider-growth").value = p.growth;
+            document.getElementById("slider-margin").value = p.margin;
+            document.getElementById("slider-pe").value = p.pe;
+
+            setHorizon(p.horizon, false);
+            updateValuationModel();
+        }
+
+        function onMetaInputChange() {
+            document.getElementById("company-preset").value = "CUSTOM";
+            updateValuationModel();
+        }
+
+        function setHorizon(years, triggerUpdate = true) {
+            selectedHorizon = years;
+            document.getElementById("val-horizon").innerText = `${years} Year${years > 1 ? 's' : ''}`;
+            
+            [1, 3, 5].forEach(h => {
+                const btn = document.getElementById(`btn-hz-${h}`);
+                if (h === years) {
+                    btn.className = "py-1.5 rounded-lg font-semibold transition bg-crimson-500/20 text-crimson-400 border border-crimson-500/30";
+                } else {
+                    btn.className = "py-1.5 rounded-lg font-semibold transition text-slate-400 hover:text-white";
+                }
+            });
+
+            if (triggerUpdate) updateValuationModel();
+        }
+
+        function applyScenarioPreset(scenario) {
+            const currentGrowth = parseFloat(document.getElementById("slider-growth").value);
+            const currentMargin = parseFloat(document.getElementById("slider-margin").value);
+            const currentPE = parseFloat(document.getElementById("slider-pe").value);
+
+            let g = currentGrowth, m = currentMargin, pe = currentPE;
+
+            if (scenario === 'bear') {
+                g = Math.max(-10, +(currentGrowth * 0.50).toFixed(1));
+                m = Math.max(1, +(currentMargin * 0.75).toFixed(1));
+                pe = Math.max(5, +(currentPE * 0.75).toFixed(1));
+            } else if (scenario === 'base') {
+                const profileKey = document.getElementById("company-preset").value;
+                if (PROFILES[profileKey]) {
+                    g = PROFILES[profileKey].growth;
+                    m = PROFILES[profileKey].margin;
+                    pe = PROFILES[profileKey].pe;
+                }
+            } else if (scenario === 'bull') {
+                g = Math.min(35, +(currentGrowth * 1.40).toFixed(1));
+                m = Math.min(35, +(currentMargin * 1.25).toFixed(1));
+                pe = Math.min(50, +(currentPE * 1.25).toFixed(1));
+            }
+
+            document.getElementById("slider-growth").value = g;
+            document.getElementById("slider-margin").value = m;
+            document.getElementById("slider-pe").value = pe;
+
+            updateValuationModel();
+        }
+
+        function updateValuationModel() {
+            // Read inputs
+            const companyName = document.getElementById("input-company-name").value || "Company";
+            const ticker = (document.getElementById("input-ticker").value || "TICKER").toUpperCase();
+            const currentPrice = Math.max(0.01, parseFloat(document.getElementById("input-price").value) || 1.0);
+            const baseRevenueB = Math.max(0.001, parseFloat(document.getElementById("input-revenue").value) || 1.0);
+            const sharesM = Math.max(0.001, parseFloat(document.getElementById("input-shares").value) || 1.0);
+
+            const growthCAGR = parseFloat(document.getElementById("slider-growth").value) / 100;
+            const netMargin = parseFloat(document.getElementById("slider-margin").value) / 100;
+            const exitPE = parseFloat(document.getElementById("slider-pe").value);
+            const N = selectedHorizon;
+
+            // Update Header Meta
+            document.getElementById("display-company-title").innerText = companyName;
+            document.getElementById("display-ticker").innerText = `${ticker}`;
+
+            // Update Slider Text Displays
+            document.getElementById("val-growth").innerText = `${(growthCAGR * 100) >= 0 ? '+' : ''}${(growthCAGR * 100).toFixed(1)}%`;
+            document.getElementById("val-margin").innerText = `${(netMargin * 100).toFixed(1)}%`;
+            document.getElementById("val-pe").innerText = `${exitPE.toFixed(1)}x`;
+
+            // Calculations
+            // Revenue_N ($B) = Revenue_0 * (1 + g)^N
+            const projRevenueB = baseRevenueB * Math.pow(1 + growthCAGR, N);
+            const projNetIncomeM = (projRevenueB * 1000) * netMargin; // Net income in $M
+            const projEPS = projNetIncomeM / sharesM;
+            const targetPrice = projEPS * exitPE;
+            const totalReturn = ((targetPrice - currentPrice) / currentPrice) * 100;
+            const cagrReturn = (targetPrice > 0 && currentPrice > 0) 
+                ? (Math.pow(targetPrice / currentPrice, 1 / N) - 1) * 100 
+                : -100;
+
+            document.getElementById("kpi-revenue").innerText = `$${projRevenueB >= 100 ? projRevenueB.toFixed(1) : projRevenueB.toFixed(2)}B`;
+            document.getElementById("kpi-rev-growth").innerText = `${(growthCAGR * 100) >= 0 ? '+' : ''}${(growthCAGR * 100).toFixed(1)}% CAGR (${N}y)`;
+            
+            document.getElementById("kpi-net-income").innerText = `$${projNetIncomeM >= 1000 ? (projNetIncomeM / 1000).toFixed(2) + 'B' : projNetIncomeM.toFixed(1) + 'M'}`;
+            document.getElementById("kpi-net-margin").innerText = `Margin: ${(netMargin * 100).toFixed(1)}%`;
+            
+            document.getElementById("kpi-eps").innerText = `$${projEPS.toFixed(2)}`;
+            document.getElementById("kpi-shares").innerText = `${sharesM >= 1000 ? (sharesM / 1000).toFixed(1) + 'B' : sharesM.toFixed(1) + 'M'} Shares`;
+
+            document.getElementById("kpi-target-price").innerText = `$${targetPrice.toFixed(2)}`;
+            document.getElementById("kpi-multiple").innerText = `${exitPE.toFixed(1)}x Exit P/E`;
+
+            const upsideEl = document.getElementById("kpi-upside");
+            upsideEl.innerText = `${totalReturn >= 0 ? '+' : ''}${totalReturn.toFixed(2)}%`;
+            upsideEl.className = `text-lg sm:text-xl font-bold font-mono mt-1 ${totalReturn >= 0 ? 'text-emerald-400' : 'text-rose-500'}`;
+            document.getElementById("kpi-current-price-label").innerText = `vs $${currentPrice.toFixed(2)} Current`;
+
+            const cagrEl = document.getElementById("kpi-cagr");
+            cagrEl.innerText = `${cagrReturn >= 0 ? '+' : ''}${cagrReturn.toFixed(2)}%`;
+            cagrEl.className = `text-lg sm:text-xl font-bold font-mono mt-1 ${cagrReturn >= 0 ? 'text-sky-400' : 'text-rose-400'}`;
+            document.getElementById("kpi-horizon-label").innerText = `${N}-Yr Compound CAGR`;
+
+            renderTrajectoryChart(baseRevenueB, growthCAGR, netMargin, N);
+            renderSensitivityCurve(projEPS, exitPE, currentPrice);
+            renderSensitivityMatrix(baseRevenueB, sharesM, N, netMargin, exitPE, currentPrice);
+        }
+
+        function renderTrajectoryChart(baseRevB, growthCAGR, margin, N) {
+            const labels = [];
+            const revenueData = [];
+            const netIncomeData = [];
+
+            for (let yr = 0; yr <= N; yr++) {
+                labels.push(yr === 0 ? 'Base (Y0)' : `Year ${yr}`);
+                const rev = baseRevB * Math.pow(1 + growthCAGR, yr);
+                const ni = (rev * 1000) * margin;
+                revenueData.push(+rev.toFixed(2));
+                netIncomeData.push(+ni.toFixed(1));
+            }
+
+            const ctx = document.getElementById('trajectoryChart').getContext('2d');
+            if (trajectoryChartInstance) trajectoryChartInstance.destroy();
+
+            trajectoryChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Net Income ($M)',
+                            data: netIncomeData,
+                            type: 'line',
+                            borderColor: '#9e1b32',
+                            backgroundColor: '#9e1b32',
+                            borderWidth: 3,
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            yAxisID: 'y1'
+                        },
+                        {
+                            label: 'Revenue ($B)',
+                            data: revenueData,
+                            backgroundColor: 'rgba(30, 41, 59, 0.85)',
+                            borderColor: '#334155',
+                            borderWidth: 1,
+                            borderRadius: 6,
+                            yAxisID: 'y'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { labels: { color: '#8A99AD', font: { family: 'Inter', size: 11 } } },
+                        tooltip: {
+                            backgroundColor: '#151C28',
+                            titleColor: '#fff',
+                            bodyColor: '#cbd5e1',
+                            borderColor: '#232D3F',
+                            borderWidth: 1
+                        }
+                    },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: '#8A99AD', font: { family: 'JetBrains Mono', size: 10 } } },
+                        y: {
+                            type: 'linear',
+                            position: 'left',
+                            title: { display: true, text: 'Rev ($B)', color: '#8A99AD', font: { size: 10 } },
+                            grid: { color: 'rgba(35, 45, 63, 0.5)' },
+                            ticks: { color: '#8A99AD', font: { family: 'JetBrains Mono', size: 10 } }
+                        },
+                        y1: {
+                            type: 'linear',
+                            position: 'right',
+                            title: { display: true, text: 'Net Income ($M)', color: '#9e1b32', font: { size: 10 } },
+                            grid: { drawOnChartArea: false },
+                            ticks: { color: '#9e1b32', font: { family: 'JetBrains Mono', size: 10 } }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderSensitivityCurve(projEPS, activePE, currentPrice) {
+            const peRange = [];
+            const pricePoints = [];
+            
+            // Build range around active PE
+            const minPE = Math.max(5, Math.floor(activePE * 0.5));
+            const maxPE = Math.ceil(activePE * 1.5);
+            const step = Math.max(1, Math.round((maxPE - minPE) / 10));
+
+            for (let pe = minPE; pe <= maxPE; pe += step) {
+                peRange.push(`${pe}x`);
+                pricePoints.push(+(projEPS * pe).toFixed(2));
+            }
+
+            const ctx = document.getElementById('sensitivityCurveChart').getContext('2d');
+            if (sensitivityCurveChartInstance) sensitivityCurveChartInstance.destroy();
+
+            sensitivityCurveChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: peRange,
+                    datasets: [
+                        {
+                            label: 'Target Share Price ($)',
+                            data: pricePoints,
+                            borderColor: '#38bdf8',
+                            backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                            fill: true,
+                            tension: 0.3,
+                            borderWidth: 2,
+                            pointRadius: 4,
+                            pointBackgroundColor: peRange.map(pe => parseFloat(pe) === activePE ? '#9e1b32' : '#38bdf8')
+                        },
+                        {
+                            label: 'Current Price Benchmark',
+                            data: new Array(peRange.length).fill(currentPrice),
+                            borderColor: '#64748b',
+                            borderDash: [4, 4],
+                            borderWidth: 1.5,
+                            pointRadius: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: '#8A99AD', font: { family: 'Inter', size: 11 } } },
+                        tooltip: {
+                            backgroundColor: '#151C28',
+                            titleColor: '#fff',
+                            bodyColor: '#cbd5e1',
+                            borderColor: '#232D3F',
+                            borderWidth: 1
+                        }
+                    },
+                    scales: {
+                        x: { grid: { color: 'rgba(35, 45, 63, 0.3)' }, ticks: { color: '#8A99AD', font: { family: 'JetBrains Mono', size: 10 } } },
+                        y: { grid: { color: 'rgba(35, 45, 63, 0.5)' }, ticks: { color: '#8A99AD', font: { family: 'JetBrains Mono', size: 10 } } }
+                    }
+                }
+            });
+        }
+
+        function renderSensitivityMatrix(baseRevB, sharesM, N, activeMargin, activePE, currentPrice) {
+            const growthCAGR = parseFloat(document.getElementById("slider-growth").value) / 100;
+            const projRevB = baseRevB * Math.pow(1 + growthCAGR, N);
+
+            // Generate PE Multiples (Columns) around active PE
+            const peCols = [
+                Math.max(5, +(activePE * 0.70).toFixed(1)),
+                Math.max(5, +(activePE * 0.85).toFixed(1)),
+                +activePE.toFixed(1),
+                +(activePE * 1.15).toFixed(1),
+                +(activePE * 1.30).toFixed(1)
+            ];
+
+            // Generate Margins (Rows) around active Margin
+            const marginRows = [
+                Math.max(0.5, +(activeMargin * 100 * 0.70).toFixed(1)),
+                Math.max(0.5, +(activeMargin * 100 * 0.85).toFixed(1)),
+                +(activeMargin * 100).toFixed(1),
+                Math.min(50, +(activeMargin * 100 * 1.15).toFixed(1)),
+                Math.min(50, +(activeMargin * 100 * 1.30).toFixed(1))
+            ];
+
+            // Render Header Row
+            const headerRow = document.getElementById("matrix-header-row");
+            headerRow.innerHTML = `<th class="p-2 text-left text-slate-400 font-semibold">Net Margin \\ P/E</th>` +
+                peCols.map(pe => `<th class="p-2 font-bold ${pe === activePE ? 'text-crimson-400 bg-crimson-500/10 rounded-t' : 'text-slate-300'}">${pe.toFixed(1)}x</th>`).join('');
+
+            // Render Body Rows
+            const tbody = document.getElementById("matrix-body");
+            tbody.innerHTML = '';
+
+            marginRows.forEach(mVal => {
+                const isCurrentMargin = (mVal === +(activeMargin * 100).toFixed(1));
+                let rowHTML = `<tr><td class="p-2 font-bold text-left ${isCurrentMargin ? 'text-crimson-400 bg-crimson-500/10' : 'text-slate-300'}">${mVal.toFixed(1)}%</td>`;
+
+                peCols.forEach(peVal => {
+                    const isCurrentPE = (peVal === +activePE.toFixed(1));
+                    const isActiveCell = isCurrentMargin && isCurrentPE;
+
+                    // Calc matrix cell share price
+                    const cellNetIncomeM = (projRevB * 1000) * (mVal / 100);
+                    const cellEPS = cellNetIncomeM / sharesM;
+                    const cellPrice = cellEPS * peVal;
+                    const isAboveBase = cellPrice >= currentPrice;
+
+                    let cellBg = "hover:bg-dark-accent/50";
+                    if (isActiveCell) {
+                        cellBg = "bg-crimson-500 text-white font-bold shadow-lg shadow-crimson-500/30 border border-white";
+                    } else if (isAboveBase) {
+                        cellBg = "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+                    } else {
+                        cellBg = "bg-dark-base/50 text-slate-400";
+                    }
+
+                    rowHTML += `<td class="p-2 font-mono ${cellBg} transition cursor-default">$${cellPrice.toFixed(2)}</td>`;
+                });
+
+                rowHTML += `</tr>`;
+                tbody.innerHTML += rowHTML;
+            });
+        }
+
+        window.onload = function() {
+            loadPresetProfile('ASO');
+        };
+    </script>
+</body>
+</html>
